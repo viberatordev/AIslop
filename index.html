@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Мои Игры - Онлайн сервис</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            color: white;
+            margin-bottom: 50px;
+            animation: fadeIn 0.8s ease-in;
+        }
+
+        header h1 {
+            font-size: 3em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .tabs {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 40px;
+            flex-wrap: wrap;
+        }
+
+        .tab-btn {
+            background: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: bold;
+            color: #667eea;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .tab-btn:hover {
+            background: #667eea;
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        .tab-btn.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .games-section {
+            display: none;
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        .games-section.active {
+            display: grid;
+        }
+
+        .games-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 30px;
+            animation: slideUp 0.6s ease-in;
+        }
+
+        .game-card {
+            background: white;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .game-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 12px 35px rgba(0,0,0,0.3);
+        }
+
+        .game-card img {
+            width: 100%;
+            height: 180px;
+            object-fit: cover;
+            background: #f0f0f0;
+        }
+
+        .game-card h3 {
+            padding: 15px 15px 5px;
+            color: #333;
+            font-size: 1.3em;
+        }
+
+        .game-card p {
+            padding: 0 15px 15px;
+            color: #666;
+            font-size: 0.95em;
+            flex-grow: 1;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            padding: 15px;
+            border-top: 1px solid #eee;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 10px 15px;
+            text-decoration: none;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            text-align: center;
+            display: inline-block;
+        }
+
+        .btn-play {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-play:hover {
+            background: #5568d3;
+        }
+
+        .btn-download {
+            background: #764ba2;
+            color: white;
+        }
+
+        .btn-download:hover {
+            background: #64398f;
+        }
+
+        footer {
+            text-align: center;
+            color: white;
+            margin-top: 50px;
+            padding: 20px;
+            opacity: 0.8;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @media (max-width: 768px) {
+            header h1 {
+                font-size: 2em;
+            }
+
+            .games-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .tabs {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .tab-btn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- ЗАГОЛОВОК -->
+        <header>
+            <h1>🎮 МОИ ИГРЫ</h1>
+            <p>Играй онлайн или скачай себе</p>
+        </header>
+
+        <!-- ВКЛАДКИ (КАТЕГОРИИ) -->
+        <div class="tabs">
+            <button class="tab-btn active" onclick="showCategory('all')">Все игры</button>
+            <button class="tab-btn" onclick="showCategory('shooter')">Шутеры</button>
+            <button class="tab-btn" onclick="showCategory('action')">Экшены</button>
+            <button class="tab-btn" onclick="showCategory('rpg')">РПГ</button>
+        </div>
+
+        <!-- КАТЕГОРИЯ: ВСЕ ИГРЫ -->
+        <div id="all" class="games-section active">
+            <div class="games-grid">
+                
+                <!-- ИГРА 1 -->
+                <div class="game-card">
+                    <img src="images/counter.jpg" alt="Counter">
+                    <h3>Counter</h3>
+                    <p>Классический шутер с быстрым геймплеем. Уничтожай врагов и выживай!</p>
+                    <div class="button-group">
+                        <a href="games/counter.html" class="btn btn-play">▶ Играть</a>
+                        <a href="downloads/counter.zip" download class="btn btn-download">⬇ Скачать</a>
+                    </div>
+                </div>
+
+                <!-- ИГРА 2 -->
+                <div class="game-card">
+                    <img src="images/gta.jpg" alt="GTA">
+                    <h3>GTA</h3>
+                    <p>Экшн в открытом мире. Жми газ и выполняй миссии!</p>
+                    <div class="button-group">
+                        <a href="games/gta.html" class="btn btn-play">▶ Играть</a>
+                        <a href="downloads/gta.zip" download class="btn btn-download">⬇ Скачать</a>
+                    </div>
+                </div>
+
+                <!-- ИГРА 3 -->
+                <div class="game-card">
+                    <img src="images/minecraft.jpg" alt="Minecraft">
+                    <h3>Minecraft</h3>
+                    <p>РПГ-приключение. Строй, исследуй и создавай свой мир!</p>
+                    <div class="button-group">
+                        <a href="games/minecraft.html" class="btn btn-play">▶ Играть</a>
+                        <a href="downloads/minecraft.zip" download class="btn btn-download">⬇ Скачать</a>
+                    </div>
+                </div>
+
+                <!-- ДОБАВЛЯЙ НОВЫЕ ИГРЫ СЮДА -->
+
+            </div>
+        </div>
+
+        <!-- КАТЕГОРИЯ: ШУТЕРЫ -->
+        <div id="shooter" class="games-section">
+            <div class="games-grid">
+                
+                <div class="game-card">
+                    <img src="images/counter.jpg" alt="Counter">
+                    <h3>Counter</h3>
+                    <p>Классический шутер с быстрым геймплеем. Уничтожай врагов и выживай!</p>
+                    <div class="button-group">
+                        <a href="games/counter.html" class="btn btn-play">▶ Играть</a>
+                        <a href="downloads/counter.zip" download class="btn btn-download">⬇ Скачать</a>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- КАТЕГОРИЯ: ЭКШЕНЫ -->
+        <div id="action" class="games-section">
+            <div class="games-grid">
+                
+                <div class="game-card">
+                    <img src="images/gta.jpg" alt="GTA">
+                    <h3>GTA</h3>
+                    <p>Экшн в открытом мире. Жми газ и выполняй миссии!</p>
+                    <div class="button-group">
+                        <a href="games/gta.html" class="btn btn-play">▶ Играть</a>
+                        <a href="downloads/gta.zip" download class="btn btn-download">⬇ Скачать</a>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- КАТЕГОРИЯ: РПГ -->
+        <div id="rpg" class="games-section">
+            <div class="games-grid">
+                
+                <div class="game-card">
+                    <img src="images/minecraft.jpg" alt="Minecraft">
+                    <h3>Minecraft</h3>
+                    <p>РПГ-приключение. Строй, исследуй и создавай свой мир!</p>
+                    <div class="button-group">
+                        <a href="games/minecraft.html" class="btn btn-play">▶ Играть</a>
+                        <a href="downloads/minecraft.zip" download class="btn btn-download">⬇ Скачать</a>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- ПОДВАЛ -->
+        <footer>
+            <p>© 2026 Мои Игры | Все права защищены | Сделано с ❤️</p>
+        </footer>
+    </div>
+
+    <script>
+        function showCategory(categoryId) {
+            // Скрываем все секции
+            const sections = document.querySelectorAll('.games-section');
+            sections.forEach(section => {
+                section.classList.remove('active');
+            });
+
+            // Показываем выбранную секцию
+            const activeSection = document.getElementById(categoryId);
+            if (activeSection) {
+                activeSection.classList.add('active');
+            }
+
+            // Обновляем кнопки
+            const buttons = document.querySelectorAll('.tab-btn');
+            buttons.forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+        }
+    </script>
+</body>
+</html>
