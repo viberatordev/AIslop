@@ -1,0 +1,1212 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Witcher Clone - v0.0.21 (FIXED)</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #050505; font-family: 'Segoe UI', sans-serif; user-select: none; }
+        canvas { display: block; }
+        
+        /* UI LAYERS */
+        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+        
+        /* HUD */
+        #player-hud { position: absolute; top: 20px; left: 20px; width: 340px; z-index: 2; }
+        .bar-bg { width: 100%; height: 20px; background: #222; border: 2px solid #555; margin-bottom: 5px; position: relative; box-shadow: 2px 2px 5px rgba(0,0,0,0.8); }
+        .health-fill { width: 100%; height: 100%; background: #a82626; transition: width 0.2s; }
+        
+        .stamina-bg { width: 100%; height: 8px; background: #222; border: 1px solid #555; margin-top: 2px; }
+        .stamina-fill { width: 100%; height: 100%; background: #e6b800; transition: width 0.1s; }
+        
+        /* Adrenaline Bar */
+        .adrenaline-container { display: flex; width: 100%; height: 6px; margin-top: 4px; gap: 2px; }
+        .adren-seg-bg { flex: 1; background: #222; border: 1px solid #444; position: relative; }
+        .adren-fill { width: 0%; height: 100%; background: #ff3333; transition: width 0.2s; box-shadow: 0 0 5px red; }
+
+        .hud-row { display: flex; justify-content: space-between; align-items: center; color: #ccc; font-size: 13px; margin-top: 5px; text-shadow: 1px 1px 2px black; font-weight: bold; }
+        
+        /* Skills & Items */
+        .skill-icon { display: inline-block; padding: 4px 8px; border: 1px solid #555; background: rgba(0,0,0,0.6); margin-right: 5px; color: #888; font-size: 11px; transition: 0.3s; }
+        .skill-active { border-color: #0088ff; color: #0088ff; box-shadow: 0 0 8px #0088ff; } 
+        .igni-style { border-color: #ffaa00; color: #ffaa00; }
+        .quen-style { border-color: #e6b800; color: #e6b800; }
+        .yrden-style { border-color: #9932CC; color: #9932CC; }
+        
+        /* Swords HUD */
+        .sword-icon { display: inline-block; width: 100px; padding: 4px; border: 1px solid #444; background: rgba(0,0,0,0.8); margin-right: 5px; text-align: center; font-size: 11px; color: #666; }
+        .sword-active { border-color: #e6b800; color: #e6b800; background: rgba(50,40,0,0.6); box-shadow: 0 0 5px #e6b800; }
+
+        /* Minimap */
+        #minimap-container {
+            position: absolute; top: 20px; right: 20px; width: 160px; height: 160px;
+            border: 3px solid #666; border-radius: 50%; background: rgba(0,0,0,0.7);
+            overflow: hidden; z-index: 2; box-shadow: 0 0 10px black;
+        }
+        #minimap-content { position: relative; width: 100%; height: 100%; }
+        .mm-dot { position: absolute; width: 6px; height: 6px; border-radius: 50%; transform: translate(-50%, -50%); box-shadow: 0 0 2px black; }
+        .mm-player { background: white; top: 50%; left: 50%; width: 8px; height: 8px; z-index: 10; }
+        .mm-enemy { background: red; }
+        .mm-boss { background: purple; width: 12px; height: 12px; border: 2px solid white; }
+        .mm-npc { background: #00ffff; width: 8px; height: 8px; }
+        .mm-power { background: #ffaa00; width: 8px; height: 8px; border: 1px solid white; box-shadow: 0 0 5px #ffaa00; }
+        .mm-nest { background: #ff3333; width: 8px; height: 8px; border: 1px solid black; }
+        .mm-horse { background: #8B4513; width: 8px; height: 8px; border: 1px solid white; }
+
+        /* Boss Bar */
+        #boss-bar-container {
+            position: absolute; top: 80px; left: 50%; transform: translateX(-50%);
+            width: 450px; display: none; text-align: center; z-index: 5;
+        }
+        #boss-name { color: #d4af37; font-weight: bold; font-size: 18px; text-shadow: 0 0 5px black; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 2px; }
+        #boss-hp-bg { width: 100%; height: 18px; background: #330000; border: 2px solid #888; }
+        #boss-hp-fill { width: 100%; height: 100%; background: linear-gradient(90deg, #ff0000, #ff4444); transition: width 0.2s; }
+
+        /* Quests & Inv */
+        #quest-tracker {
+            position: absolute; top: 220px; right: 20px; width: 250px;
+            color: #ddd; text-shadow: 1px 1px 2px black; text-align: right; display: none;
+        }
+        #quest-title { font-weight: bold; color: #e6b800; text-transform: uppercase; margin-bottom: 5px; font-size: 14px; }
+        #inventory-panel {
+            position: absolute; right: 200px; top: 20px; width: 220px;
+            background: rgba(10, 10, 10, 0.95); color: #ddd; padding: 15px;
+            border: 2px solid #555; display: none; z-index: 10; pointer-events: auto;
+        }
+        #inventory-list { list-style: none; padding: 0; margin: 0; font-size: 13px; }
+        #inventory-list li { padding: 5px 0; border-bottom: 1px solid #333; cursor: pointer; }
+        #inventory-list li:hover { color: #e6b800; }
+
+        /* Note Reader */
+        #note-reader {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 500px; height: 600px; background: #e8dcb9; color: #3d2817;
+            padding: 40px; box-shadow: 0 0 30px black; border-radius: 5px;
+            font-family: 'Times New Roman', serif; font-size: 18px; line-height: 1.6;
+            display: none; z-index: 30; pointer-events: auto; overflow-y: auto;
+            border: 10px solid #5c4033;
+        }
+        .note-close { position: absolute; top: 10px; right: 15px; font-weight: bold; cursor: pointer; font-size: 24px; color: #5c4033; }
+
+        /* Character Menu */
+        #char-menu {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 400px; background: rgba(15, 15, 15, 0.95); border: 2px solid #999;
+            padding: 20px; color: #eee; display: none; z-index: 25; pointer-events: auto;
+            box-shadow: 0 0 20px black;
+        }
+        .stat-row { display: flex; justify-content: space-between; margin-bottom: 10px; align-items: center; }
+        .btn-upgrade { background: #333; color: #e6b800; border: 1px solid #555; padding: 2px 8px; cursor: pointer; }
+        .btn-upgrade:hover { background: #444; border-color: #e6b800; }
+        .btn-disabled { opacity: 0.3; cursor: default; }
+
+        /* Dialogs */
+        #dialog-box {
+            position: absolute; bottom: 80px; left: 50%; transform: translateX(-50%);
+            width: 700px; background: linear-gradient(to bottom, rgba(0,0,0,0.9), rgba(20,20,20,0.95)); 
+            border: 2px solid #777; padding: 20px; color: white; display: none; pointer-events: auto; z-index: 20;
+        }
+        #npc-name { color: #e6b800; font-weight: bold; margin-bottom: 10px; font-size: 18px; text-transform: uppercase; }
+        #npc-text { margin-bottom: 20px; font-size: 16px; line-height: 1.5; color: #eee; }
+        .dialog-option { 
+            display: block; padding: 8px 15px; cursor: pointer; color: #aaa; 
+            border: 1px solid transparent; margin-bottom: 5px; background: rgba(255,255,255,0.05);
+        }
+        .dialog-option:hover { color: white; border-color: #aaa; background: rgba(255,255,255,0.1); }
+
+        /* Notifications & Hints */
+        #notifications { position: absolute; bottom: 200px; left: 20px; display: flex; flex-direction: column-reverse; }
+        .loot-msg { background: rgba(0,0,0,0.7); color: #e6b800; padding: 8px 12px; margin-top: 5px; border-left: 3px solid #e6b800; animation: fadeOut 3s forwards; font-size: 14px; }
+        @keyframes fadeOut { 0% { opacity: 1; } 80% { opacity: 1; } 100% { opacity: 0; } }
+        
+        .float-text { position: absolute; color: white; font-weight: bold; text-shadow: 1px 1px 0 black; pointer-events: none; animation: floatUp 1s forwards; font-family: 'Impact', sans-serif; }
+        @keyframes floatUp { 0% { opacity: 1; transform: translateY(0) scale(1); } 100% { opacity: 0; transform: translateY(-50px) scale(1.2); } }
+        
+        #interact-hint { position: absolute; top: 65%; left: 50%; transform: translateX(-50%); color: white; font-weight: bold; text-shadow: 0 0 5px black; display: none; font-size: 20px; text-transform: uppercase; letter-spacing: 2px; }
+
+        /* FX Overlay */
+        #senses-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: radial-gradient(circle, transparent 30%, rgba(0,0,0,0.9) 100%);
+            pointer-events: none; display: none; z-index: 1;
+        }
+        #thunder-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            box-shadow: inset 0 0 100px rgba(0, 100, 255, 0.3);
+            pointer-events: none; display: none; z-index: 1;
+        }
+
+        #overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.92); display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; z-index: 50; cursor: pointer; }
+        .enemy-hp-bar { position: absolute; width: 50px; height: 5px; background: #111; border: 1px solid #777; display: none; pointer-events: none; }
+    </style>
+</head>
+<body>
+
+    <div id="overlay">
+        <h1 style="margin:0; letter-spacing: 4px; color: #e6b800; font-size: 40px; text-shadow: 0 0 10px #e6b800;">WITCHER 3D</h1>
+        <p style="color:#aaa; font-size: 18px;">Версия 0.0.21 (FIXED)</p>
+        <div style="margin-top:30px; font-size:15px; color:#ccc; text-align: left; line-height: 1.8; background: rgba(255,255,255,0.05); padding: 20px; border-radius: 8px; border: 1px solid #333;">
+            <b style="color:#e6b800">[WASD]</b> Движение &nbsp;&nbsp; <b style="color:#e6b800">[SHIFT]</b> Бег &nbsp;&nbsp; <b style="color:#e6b800">[SPACE]</b> Кувырок<br>
+            <b style="color:#e6b800">[Z/X]</b> Стальной/Серебряный меч &nbsp;&nbsp; <b style="color:#e6b800">[ЛКМ]</b> Атака<br>
+            <b style="color:#e6b800">[Q]</b> Игни &nbsp; <b style="color:#e6b800">[2]</b> Квен &nbsp; <b style="color:#e6b800">[3]</b> Аард &nbsp; <b style="color:#e6b800">[4]</b> Ирден<br>
+            <b style="color:#e6b800">[1]</b> Ласточка (HP) &nbsp;&nbsp; <b style="color:#e6b800">[R]</b> Гром (Урон)<br>
+            <b style="color:#e6b800">[E]</b> Действие &nbsp;&nbsp; <b style="color:#e6b800">[I]</b> Инвентарь &nbsp;&nbsp; <b style="color:#e6b800">[C]</b> Меню<br>
+            <b style="color:#e6b800">[ПКМ]</b> Чутьё (Искать следы)
+        </div>
+        <p style="margin-top:40px; border:1px solid #e6b800; color: #e6b800; padding: 12px 30px; text-transform: uppercase; letter-spacing: 2px; transition: 0.3s;">Начать Охоту</p>
+    </div>
+
+    <div id="senses-overlay"></div>
+    <div id="thunder-overlay"></div>
+
+    <div id="ui-layer">
+        <div id="player-hud">
+            <div style="font-weight:bold; color:white; text-transform:uppercase; margin-bottom:5px; letter-spacing: 1px;">Геральт из Ривии</div>
+            <div class="bar-bg"><div id="hp-bar" class="health-fill"></div></div>
+            <div class="stamina-bg"><div id="stamina-bar" class="stamina-fill"></div></div>
+            
+            <!-- Adrenaline Bar -->
+            <div class="adrenaline-container">
+                <div class="adren-seg-bg"><div id="adren-1" class="adren-fill"></div></div>
+                <div class="adren-seg-bg"><div id="adren-2" class="adren-fill"></div></div>
+                <div class="adren-seg-bg"><div id="adren-3" class="adren-fill"></div></div>
+            </div>
+
+            <div style="margin-top:8px; display:flex;">
+                <span id="sword-steel" class="sword-icon sword-active">[Z] СТАЛЬНОЙ</span>
+                <span id="sword-silver" class="sword-icon">[X] СЕРЕБРЯНЫЙ</span>
+            </div>
+
+            <div style="margin-top:10px;">
+                <span id="igni-icon" class="skill-icon igni-style">Q: ИГНИ</span>
+                <span id="quen-icon" class="skill-icon quen-style">2: КВЕН</span>
+                <span id="aard-icon" class="skill-icon" style="color:#0088ff; border-color:#0088ff">3: ААРД</span>
+                <span id="yrden-icon" class="skill-icon yrden-style">4: ИРДЕН</span>
+            </div>
+            <div class="hud-row">
+                <span>УРОВЕНЬ: <span id="lvl-val" style="color:#e6b800">1</span></span>
+                <span>ОПЫТ: <span id="xp-val">0</span>/100</span>
+                <span>ЗОЛОТО: <span id="gold-val">0</span></span>
+            </div>
+            <div class="hud-row" style="margin-top:5px; color:#00ffaa;">
+                <span>[1] Ласточка: x<span id="potions-val">3</span></span>
+                <span style="color:#00ccff">[R] Гром: x<span id="grom-val">0</span></span>
+            </div>
+        </div>
+
+        <div id="minimap-container"><div id="minimap-content"><div class="mm-dot mm-player"></div></div></div>
+        <div id="boss-bar-container">
+            <div id="boss-name">Королевский Грифон</div>
+            <div id="boss-hp-bg"><div id="boss-hp-fill"></div></div>
+        </div>
+        <div id="quest-tracker">
+            <div id="quest-title">Нет активных заданий</div>
+            <div id="quest-obj">Поговорите с Весемиром</div>
+        </div>
+        <div id="inventory-panel">
+            <h3 style="margin:0 0 10px 0; color:#e6b800; border-bottom:1px solid #555;">Инвентарь</h3>
+            <div style="font-size:11px; color:#999; margin-bottom:5px;">Нажми на предмет, чтобы использовать</div>
+            <ul id="inventory-list"><li style="color:#777;">Пусто...</li></ul>
+        </div>
+        
+        <div id="char-menu">
+            <h2 style="color:#e6b800; margin-top:0; border-bottom:1px solid #555;">Персонаж</h2>
+            <div style="margin-bottom:15px; color:#aaa;">Очков навыков: <span id="skill-pts" style="color:white; font-weight:bold;">0</span></div>
+            
+            <div class="stat-row">
+                <span>Сила Атаки (<span id="atk-val">100</span>%)</span>
+                <button id="btn-upg-atk" class="btn-upgrade" onclick="upgradeStat('atk')">+</button>
+            </div>
+            <div class="stat-row">
+                <span>Здоровье (<span id="hp-max-val">100</span>)</span>
+                <button id="btn-upg-hp" class="btn-upgrade" onclick="upgradeStat('hp')">+</button>
+            </div>
+            <div style="font-size:12px; color:#777; margin-top:20px;">Нажмите [C] чтобы закрыть</div>
+        </div>
+
+        <div id="note-reader">
+            <div class="note-close" onclick="closeNote()">X</div>
+            <h2 id="note-title" style="text-align:center; text-transform:uppercase;">Заголовок</h2>
+            <p id="note-content">Текст...</p>
+        </div>
+
+        <div id="notifications"></div>
+        <div id="interact-hint">[E] Взаимодействовать</div>
+    </div>
+
+    <div id="dialog-box">
+        <div id="npc-name">NPC</div>
+        <div id="npc-text">...</div>
+        <div id="dialog-options"></div>
+    </div>
+    
+    <div id="center-marker" style="position: absolute; top: 50%; left: 50%; width: 4px; height: 4px; background: white; border-radius: 50%; transform: translate(-50%, -50%); opacity: 0.6; box-shadow: 0 0 4px black; pointer-events:none;"></div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <script>
+        // --- CONFIG & STATE ---
+        const CONFIG = {
+            baseSpeed: 0.12, runSpeed: 0.23, dodgeSpeed: 0.8,
+            xpToLevel: 100, interactDist: 4.0
+        };
+
+        let scene, camera, renderer, sunLight, fogNormal, fogSenses;
+        let player, playerMesh, swordMesh, quenShieldMesh, griffin;
+        let vesemir, merchant, herbalist, roach;
+        let enemies = [], lootDrops = [], particles = [], bloodPools = [], tracks = [];
+        let containers = [], placesOfPower = [], nests = [];
+        let rainSystem, rainGeo, yrdenMesh;
+        let currentNPC = null;
+        let timeScale = 1.0; 
+        
+        const state = {
+            isLocked: false, isDialog: false, isMenuOpen: false, isNoteOpen: false, gameOver: false,
+            hp: 100, maxHp: 100, stamina: 100, potions: 3, grom: 0, xp: 0, level: 1, gold: 0,
+            adrenaline: 0, // 0-300
+            skillPoints: 0, attackMult: 1.0, currentSword: 'steel',
+            hasQuen: false, sensesActive: false, isMeditating: false, 
+            rainTarget: false, rainAlpha: 0.0,
+            yrdenActive: false, yrdenTime: 0, gromActive: false, gromTime: 0,
+            quest: { id: "none", step: 0, count: 0, target: 0 },
+            camPitch: 0.3, camYaw: Math.PI, timeOfDay: 0, weatherTimer: 0
+        };
+
+        const keys = { w:false, s:false, a:false, d:false, shift:false };
+        const inventory = {}; 
+        const stash = {};
+
+        // --- LORE TEXTS ---
+        const LORE = {
+            "Записка Бандита": "Мы спрятали награбленное в сундук у большого камня. Ключ у босса, он не доверяет даже мне. Надо бы его прирезать, когда он уснет...",
+            "Дневник Травницы": "Призраки становятся все агрессивнее. Я видела, как они охраняют развалины. Говорят, Ирден помогает сделать их уязвимыми. Нужно собрать больше Волкобоя.",
+            "Приказ Нильфгаарда": "Солдатам предписано не входить в лес без сопровождения. Участились случаи пропажи патрулей. Вероятная причина: Гнездо Накеров или что-то похуже."
+        };
+
+        // --- DIALOG DATA ---
+        const DIALOGS = {
+            vesemir: {
+                start: { 
+                    text: "Геральт, я видел странные следы на опушке. Используй чутье, чтобы найти их. Они могут привести к гнезду чудовищ.", 
+                    options: [
+                        {text:"Я займусь утопцами. (Взять заказ)", action:"quest_drowners"}, 
+                        {text:"Где найти Торговца?", action:"info_merchant"},
+                        {text:"Я поищу следы.", action:"close"}
+                    ] 
+                },
+                info_merchant: {
+                    text: "Торговец стоит на рынке. У него есть эликсир Гром, он увеличивает силу удара.",
+                    options: [{text:"Понял, спасибо.", action:"back_start"}]
+                },
+                drowners_active: { text: "Не торопись, Волк. Убей 5 утопцев и возвращайся.", options: [{text:"Уже иду.", action:"close"}] },
+                drowners_done: { text: "Отличная работа. Но есть проблема посерьезнее — Грифон на северном холме.", options: [{text:"Грифон? Расскажи подробнее.", action:"quest_griffin"}] },
+                griffin_active: { text: "Грифон опасен. Используй Знак Квен для защиты.", options: [{text:"Я помню, Весемир.", action:"close"}] },
+                griffin_done: { text: "Ты убил Грифона? Невероятно. Теперь можешь передохнуть.", options: [{text:"Это была славная охота.", action:"close"}] },
+                all_done: { text: "Пока тихо. Проверь лагерь бандитов на юге, они мешают селянам.", options: [{text:"Бывай.", action:"close"}] }
+            },
+            merchant: {
+                main: {
+                    text: "Добро пожаловать! У меня есть редкие зелья.",
+                    options: [
+                        {text:"Купить Ласточку (50 золота)", action:"buy_potion"},
+                        {text:"Купить Гром (70 золота)", action:"buy_grom"},
+                        {text:"Просто смотрю.", action:"close"}
+                    ]
+                }
+            },
+            herbalist: {
+                main: {
+                    text: "Здравствуй, ведьмак. Я могу сварить тебе Ласточку или Гром.",
+                    options: [
+                        {text:"Сварить Ласточку (3 Волкобоя)", action:"brew_potion"},
+                        {text:"Сварить Гром (2 Волкобоя + 10 золота)", action:"brew_grom"},
+                        {text:"Я поищу травы.", action:"close"}
+                    ]
+                }
+            }
+        };
+
+        // --- INIT ---
+        init();
+        animate();
+
+        function init() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x87CEEB);
+            fogNormal = new THREE.Fog(0x87CEEB, 20, 90);
+            fogSenses = new THREE.Fog(0x050505, 5, 40); 
+            scene.fog = fogNormal;
+
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 1000);
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            document.body.appendChild(renderer.domElement);
+            
+            document.addEventListener('contextmenu', e => e.preventDefault());
+
+            const hemi = new THREE.HemisphereLight(0xffffff, 0x444444, 0.4);
+            scene.add(hemi);
+            sunLight = new THREE.DirectionalLight(0xffaa33, 1.2);
+            sunLight.position.set(50, 100, 50);
+            sunLight.castShadow = true;
+            sunLight.shadow.mapSize.width = 2048;
+            sunLight.shadow.mapSize.height = 2048;
+            scene.add(sunLight);
+
+            createWorld(); 
+            createHouse(30, -30); 
+            createRuins(-60, 40); 
+            createMarketStall(-10, 35);
+            createBanditCamp(50, 80); // New Feature
+            
+            createPlayer();
+            createRainSystem();
+            
+            createVesemir(35, -25);
+            createMerchant(-10, 35);
+            createHerbalist(-55, 50);
+            createRoach(40, -35); // New Feature
+            
+            createPlaceOfPower(80, -80); 
+            createContainer(30, -35, "barrel"); 
+            createContainer(-60, 45, "crate"); 
+            
+            createMonsterNest(-90, -90); 
+            createTracks(new THREE.Vector3(30,0.1,-30), new THREE.Vector3(-90,0.1,-90), 12); 
+            
+            // Spawn Loot Notes
+            createLootNote(-62, 42, "Записка Бандита");
+            createLootNote(-53, 52, "Дневник Травницы");
+
+            spawnEnemyPack(8); 
+            spawnBandits(5, -60, 40);
+            spawnHerbs(15);
+            createBear(-40, -40);
+
+            yrdenMesh = new THREE.Mesh(new THREE.RingGeometry(2.5, 3.0, 32), new THREE.MeshBasicMaterial({ color: 0x9932CC, side: THREE.DoubleSide, transparent:true, opacity:0.6 }));
+            yrdenMesh.rotation.x = -Math.PI/2; yrdenMesh.visible = false; scene.add(yrdenMesh);
+
+            setupEvents();
+        }
+
+        // --- WORLD ---
+        function createWorld() {
+            const ground = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), new THREE.MeshStandardMaterial({ color: 0x2f4f2f, roughness: 0.9 }));
+            ground.rotation.x = -Math.PI/2; ground.receiveShadow = true; scene.add(ground);
+            
+            for(let i=0; i<20; i++){
+                const p = new THREE.Mesh(new THREE.CircleGeometry(8 + Math.random()*5, 16), new THREE.MeshStandardMaterial({ color: 0x3d2817, roughness: 1 }));
+                p.rotation.x = -Math.PI/2; p.position.set((Math.random()-0.5)*300, 0.05, (Math.random()-0.5)*300); scene.add(p);
+            }
+
+            const treeGeo = new THREE.ConeGeometry(2, 7, 7);
+            const treeMat = new THREE.MeshStandardMaterial({ color: 0x1b331b, roughness: 0.8 });
+            const trunkGeo = new THREE.CylinderGeometry(0.4, 0.6, 2.5);
+            const trunkMat = new THREE.MeshStandardMaterial({ color: 0x3d2817 });
+
+            for(let i=0; i<120; i++) {
+                const x = (Math.random()-0.5)*300; const z = (Math.random()-0.5)*300;
+                if((x*x+z*z < 250) || (Math.abs(x-30)<15 && Math.abs(z+30)<15) || (z < -70) || (Math.abs(x+60)<20 && Math.abs(z-40)<20) || (Math.abs(x+10)<10 && Math.abs(z-35)<10) || (Math.abs(x-80)<10 && Math.abs(z+80)<10) || (Math.abs(x-50)<15 && Math.abs(z-80)<15)) continue;
+                const grp = new THREE.Group(); grp.position.set(x, 0, z);
+                const trunk = new THREE.Mesh(trunkGeo, trunkMat); trunk.position.y = 1.25; trunk.castShadow = true; grp.add(trunk);
+                const leaves = new THREE.Mesh(treeGeo, treeMat); leaves.position.y = 4.5; leaves.castShadow = true; grp.add(leaves);
+                const s = 0.8 + Math.random()*0.5; grp.scale.set(s,s,s); scene.add(grp);
+            }
+        }
+
+        function createHouse(x, z) {
+            const h = new THREE.Group(); h.position.set(x, 0, z);
+            const walls = new THREE.Mesh(new THREE.BoxGeometry(12, 6, 10), new THREE.MeshStandardMaterial({ color: 0x5c4033 })); walls.position.y = 3; walls.castShadow=true; h.add(walls);
+            const roof = new THREE.Mesh(new THREE.ConeGeometry(9, 5, 4), new THREE.MeshStandardMaterial({ color: 0x221100 })); roof.position.y = 8.5; roof.rotation.y = Math.PI/4; roof.castShadow=true; h.add(roof);
+            const door = new THREE.Mesh(new THREE.BoxGeometry(2.5, 4, 0.2), new THREE.MeshStandardMaterial({ color: 0x1a0d00 })); door.position.set(0, 2, 5.1); h.add(door);
+            const fire = new THREE.Mesh(new THREE.ConeGeometry(0.6, 1.2, 8), new THREE.MeshBasicMaterial({ color: 0xff4400 })); fire.position.set(8, 0.6, 4); h.add(fire);
+            const light = new THREE.PointLight(0xff6600, 1.5, 20); light.position.set(8, 2, 4); h.add(light);
+            scene.add(h);
+        }
+
+        function createBanditCamp(x, z) {
+            const camp = new THREE.Group(); camp.position.set(x, 0, z); scene.add(camp);
+            // Tents
+            for(let i=0; i<3; i++) {
+                const tent = new THREE.Mesh(new THREE.ConeGeometry(3, 4, 4), new THREE.MeshStandardMaterial({color:0xccccaa}));
+                tent.position.set((Math.random()-0.5)*10, 2, (Math.random()-0.5)*10); tent.castShadow=true; camp.add(tent);
+            }
+            // Campfire
+            const fire = new THREE.Mesh(new THREE.ConeGeometry(0.5, 1, 8), new THREE.MeshBasicMaterial({color:0xff4400})); fire.position.y=0.5; camp.add(fire);
+            const l = new THREE.PointLight(0xff4400, 2, 15); l.position.y=2; camp.add(l);
+            
+            spawnBandits(4, x, z);
+            // Chest
+            createContainer(x+5, z+5, "chest_locked");
+        }
+
+        function createRuins(x, z) {
+            const r = new THREE.Group(); r.position.set(x, 0, z);
+            const stoneMat = new THREE.MeshStandardMaterial({ color: 0x777777, roughness: 1.0 });
+            for(let i=0; i<6; i++) {
+                const pillar = new THREE.Mesh(new THREE.BoxGeometry(1.5, 4 + Math.random()*2, 1.5), stoneMat);
+                pillar.position.set((Math.random()-0.5)*15, 2, (Math.random()-0.5)*15); pillar.castShadow = true; r.add(pillar);
+            }
+            const wall = new THREE.Mesh(new THREE.BoxGeometry(10, 3, 1), stoneMat); wall.position.set(0, 1.5, -8); wall.castShadow=true; r.add(wall);
+            scene.add(r);
+        }
+
+        function createMarketStall(x, z) {
+            const stall = new THREE.Group(); stall.position.set(x, 0, z);
+            const counter = new THREE.Mesh(new THREE.BoxGeometry(3, 1.5, 1.5), new THREE.MeshStandardMaterial({color:0x8B4513}));
+            counter.position.y = 0.75; counter.castShadow = true; stall.add(counter);
+            const roof = new THREE.Mesh(new THREE.BoxGeometry(4, 0.2, 3), new THREE.MeshStandardMaterial({color:0xcc6600}));
+            roof.position.y = 2.5; stall.add(roof);
+            for(let i of [-1.5, 1.5]) {
+                const post = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 2), new THREE.MeshStandardMaterial({color:0x333}));
+                post.position.set(i, 1.5, 0); stall.add(post);
+            }
+            scene.add(stall);
+        }
+        
+        function createPlaceOfPower(x, z) {
+            const g = new THREE.Group(); g.position.set(x, 0, z);
+            const m = new THREE.Mesh(new THREE.BoxGeometry(1, 4, 1), new THREE.MeshStandardMaterial({color:0x555555, roughness:0.5}));
+            m.position.y = 2; m.castShadow = true; g.add(m);
+            const glow = new THREE.Mesh(new THREE.BoxGeometry(0.6, 3, 0.6), new THREE.MeshBasicMaterial({color:0xffaa00, transparent:true, opacity:0.5}));
+            glow.position.y = 2; g.add(glow);
+            const light = new THREE.PointLight(0xffaa00, 2, 10); light.position.y = 2; g.add(light);
+            const dot=document.createElement('div'); dot.className='mm-dot mm-power'; document.getElementById('minimap-content').appendChild(dot);
+            placesOfPower.push({group:g, mesh:m, visited:false, mmDot:dot});
+            scene.add(g);
+        }
+
+        function createContainer(x, z, type) {
+            let m;
+            if(type === "barrel") { m = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 1.2, 12), new THREE.MeshStandardMaterial({color:0x654321})); } 
+            else if(type === "chest_locked") { m = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.8, 0.8), new THREE.MeshStandardMaterial({color:0x444444})); }
+            else { m = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({color:0x8B4513})); }
+            m.position.set(x, type==="barrel"?0.6:0.5, z); m.castShadow = true;
+            containers.push({mesh:m, looted:false, locked: (type==="chest_locked")});
+            scene.add(m);
+        }
+
+        function createMonsterNest(x, z) {
+            const g = new THREE.Group(); g.position.set(x, 0, z);
+            const m = new THREE.Mesh(new THREE.SphereGeometry(2, 8, 8), new THREE.MeshStandardMaterial({color:0x8B0000, roughness:1.0}));
+            m.scale.y = 0.5; m.position.y=0.2; m.castShadow=true; g.add(m);
+            for(let i=0; i<5; i++){
+                const b = new THREE.Mesh(new THREE.DodecahedronGeometry(0.4), new THREE.MeshStandardMaterial({color:0xeeeeee}));
+                b.position.set((Math.random()-0.5)*2, 0.5, (Math.random()-0.5)*2); g.add(b);
+            }
+            const dot=document.createElement('div'); dot.className='mm-dot mm-nest'; document.getElementById('minimap-content').appendChild(dot);
+            nests.push({group:g, mesh:m, destroyed:false, mmDot:dot});
+            scene.add(g);
+        }
+
+        function createTracks(start, end, count) {
+            for(let i=0; i<count; i++) {
+                const t = i / (count-1);
+                const pos = new THREE.Vector3().lerpVectors(start, end, t);
+                pos.x += (Math.random()-0.5)*2; pos.z += (Math.random()-0.5)*2;
+                
+                const track = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 0.6), new THREE.MeshBasicMaterial({color:0xff0000, transparent:true, opacity:0.8, side:THREE.DoubleSide}));
+                track.rotation.x = -Math.PI/2;
+                track.position.copy(pos);
+                track.position.y = 0.05;
+                track.lookAt(end.x, 0.05, end.z); track.rotation.x = -Math.PI/2;
+                track.visible = false;
+                scene.add(track);
+                tracks.push(track);
+            }
+        }
+
+        function createLootNote(x, z, title) {
+            const m = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 0.4), new THREE.MeshStandardMaterial({color:0xffffe0, side:THREE.DoubleSide}));
+            m.rotation.x = -Math.PI/2; m.position.set(x, 0.05, z);
+            lootDrops.push({mesh:m, item:title, amount:1, isNote:true});
+            scene.add(m);
+        }
+
+        function createRainSystem() {
+            const geom = new THREE.BufferGeometry();
+            const count = 750; 
+            const pos = new Float32Array(count * 3);
+            for(let i=0; i<count*3; i+=3) {
+                pos[i] = (Math.random()-0.5)*100;
+                pos[i+1] = Math.random()*60;
+                pos[i+2] = (Math.random()-0.5)*100;
+            }
+            geom.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+            const mat = new THREE.PointsMaterial({color:0xaaaaaa, size:0.2, transparent:true, opacity:0});
+            rainSystem = new THREE.Points(geom, mat);
+            rainSystem.visible = false;
+            scene.add(rainSystem);
+            rainGeo = geom;
+        }
+
+        // --- ENTITIES ---
+        function createPlayer() {
+            player = new THREE.Group(); scene.add(player);
+            const mat = new THREE.MeshStandardMaterial({ color: 0x222222 });
+            playerMesh = new THREE.Mesh(new THREE.BoxGeometry(0.65, 1.8, 0.4), mat); playerMesh.position.y = 0.9; playerMesh.castShadow = true; player.add(playerMesh);
+            const head = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.35, 0.3), new THREE.MeshStandardMaterial({ color: 0xeebb99 })); head.position.set(0, 1.1, 0); playerMesh.add(head);
+            const hair = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.35, 0.35), new THREE.MeshStandardMaterial({ color: 0xeeeeee })); hair.position.set(0, 0.1, -0.05); head.add(hair);
+            
+            const swordHilt = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.4, 0.1), new THREE.MeshStandardMaterial({color:0x333}));
+            swordHilt.position.set(0.4, 0.8, 0.3); swordHilt.rotation.x = Math.PI/2;
+            swordMesh = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.5, 0.05), new THREE.MeshStandardMaterial({color:0x888}));
+            swordMesh.position.set(0, 0.8, 0); 
+            swordHilt.add(swordMesh);
+            playerMesh.add(swordHilt);
+
+            const sGeo = new THREE.BoxGeometry(0.08, 1.4, 0.05); const sMat = new THREE.MeshStandardMaterial({ color: 0x666 });
+            const s1 = new THREE.Mesh(sGeo, sMat); s1.position.set(-0.15, 0.3, -0.22); s1.rotation.z = 0.3; playerMesh.add(s1);
+            const s2 = new THREE.Mesh(sGeo, sMat); s2.position.set(0.15, 0.3, -0.22); s2.rotation.z = -0.3; playerMesh.add(s2);
+            
+            const qGeo = new THREE.SphereGeometry(1.3, 16, 16); const qMat = new THREE.MeshBasicMaterial({ color: 0xffaa00, wireframe: true, transparent: true, opacity: 0.6 });
+            quenShieldMesh = new THREE.Mesh(qGeo, qMat); quenShieldMesh.position.y = 0.9; quenShieldMesh.visible = false; player.add(quenShieldMesh);
+        }
+
+        function createRoach(x, z) {
+            roach = new THREE.Group(); roach.position.set(x, 0, z); scene.add(roach);
+            const body = new THREE.Mesh(new THREE.BoxGeometry(1, 1.5, 2.2), new THREE.MeshStandardMaterial({color:0x5C4033})); body.position.y=1.2; body.castShadow=true; roach.add(body);
+            const neck = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1, 0.8), new THREE.MeshStandardMaterial({color:0x5C4033})); neck.position.set(0, 1.8, 1.2); neck.rotation.x=0.5; roach.add(neck);
+            const head = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 1), new THREE.MeshStandardMaterial({color:0x5C4033})); head.position.set(0, 2.2, 1.6); roach.add(head);
+            const legs = []; for(let i=0;i<4;i++){const l=new THREE.Mesh(new THREE.BoxGeometry(0.3, 1.2, 0.3), new THREE.MeshStandardMaterial({color:0x3e2723})); l.position.y=0.6; l.castShadow=true; legs.push(l); roach.add(l);}
+            legs[0].position.set(0.3, 0.6, 0.8); legs[1].position.set(-0.3, 0.6, 0.8); legs[2].position.set(0.3, 0.6, -0.8); legs[3].position.set(-0.3, 0.6, -0.8);
+            
+            const dot=document.createElement('div'); dot.className='mm-dot mm-horse'; document.getElementById('minimap-content').appendChild(dot); roach.userData.mmDot=dot;
+        }
+
+        function createVesemir(x, z) {
+            vesemir = new THREE.Group(); vesemir.position.set(x, 0, z); vesemir.rotation.y = -Math.PI/2; scene.add(vesemir);
+            vesemir.userData.npcType = "vesemir";
+            const b = new THREE.Mesh(new THREE.BoxGeometry(0.7, 1.8, 0.5), new THREE.MeshStandardMaterial({ color: 0x555 })); b.position.y=0.9; b.castShadow=true; vesemir.add(b);
+            b.add(new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.35, 0.3), new THREE.MeshStandardMaterial({ color: 0xccc })).translateY(1.05));
+            const q = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.5, 0.1), new THREE.MeshBasicMaterial({ color: 0xffff00 })); q.position.set(0, 2.6, 0); q.name="qm"; vesemir.add(q);
+            const dot=document.createElement('div'); dot.className='mm-dot mm-npc'; document.getElementById('minimap-content').appendChild(dot); vesemir.userData.mmDot=dot;
+        }
+
+        function createMerchant(x, z) {
+            merchant = new THREE.Group(); merchant.position.set(x, 0, z); merchant.rotation.y = Math.PI; scene.add(merchant);
+            merchant.userData.npcType = "merchant";
+            const b = new THREE.Mesh(new THREE.BoxGeometry(0.7, 1.8, 0.5), new THREE.MeshStandardMaterial({ color: 0x8B4513 })); b.position.y=0.9; b.castShadow=true; merchant.add(b);
+            const head = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.35, 0.3), new THREE.MeshStandardMaterial({ color: 0xeebb99 })); head.position.set(0, 1.05, 0); b.add(head);
+            const hat = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.15), new THREE.MeshStandardMaterial({ color: 0xffff00 })); hat.position.set(0, 0.3, 0); head.add(hat);
+            const dot=document.createElement('div'); dot.className='mm-dot mm-npc'; document.getElementById('minimap-content').appendChild(dot); merchant.userData.mmDot=dot;
+        }
+
+        function createHerbalist(x, z) {
+            herbalist = new THREE.Group(); herbalist.position.set(x, 0, z); herbalist.rotation.y = -Math.PI/4; scene.add(herbalist);
+            herbalist.userData.npcType = "herbalist";
+            const b = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.9, 0.6), new THREE.MeshStandardMaterial({ color: 0x228B22 })); b.position.y=0.95; b.castShadow=true; herbalist.add(b);
+            const head = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.35, 0.3), new THREE.MeshStandardMaterial({ color: 0xeebb99 })); head.position.set(0, 1.1, 0); b.add(head);
+            const dot=document.createElement('div'); dot.className='mm-dot mm-npc'; document.getElementById('minimap-content').appendChild(dot); herbalist.userData.mmDot=dot;
+        }
+
+        function createGriffin(x, z) {
+            griffin = new THREE.Group(); griffin.position.set(x, 6, z); scene.add(griffin);
+            const body = new THREE.Mesh(new THREE.BoxGeometry(2, 2, 3), new THREE.MeshStandardMaterial({ color: 0x8B4513 })); body.castShadow = true; griffin.add(body);
+            const head = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1.2), new THREE.MeshStandardMaterial({ color: 0xFFD700 })); head.position.set(0, 0.5, 2); body.add(head); 
+            const beak = new THREE.Mesh(new THREE.ConeGeometry(0.4, 1, 4), new THREE.MeshStandardMaterial({ color: 0x111 })); beak.rotation.x = Math.PI/2; beak.position.set(0, -0.2, 0.8); head.add(beak);
+            const wGeo = new THREE.BoxGeometry(6, 0.2, 2); const wMat = new THREE.MeshStandardMaterial({ color: 0x5c4033 });
+            const wings = new THREE.Mesh(wGeo, wMat); wings.position.set(0, 0.5, 0); body.add(wings); 
+            
+            const dot = document.createElement('div'); dot.className = 'mm-dot mm-boss'; document.getElementById('minimap-content').appendChild(dot);
+            enemies.push({ group: griffin, mesh: body, hp: 400, max: 400, isBoss: true, name: "Грифон", mmDot: dot, dead: false, lastAtk: 0, speed: 0.15, type: "monster" });
+            document.getElementById('boss-bar-container').style.display = 'block';
+            notify("БОСС: КОРОЛЕВСКИЙ ГРИФОН", true);
+        }
+
+        function createBear(x, z) {
+            const g = new THREE.Group(); g.position.set(x, 0, z); scene.add(g);
+            const m = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.4, 2.0), new THREE.MeshStandardMaterial({color:0x3e2723}));
+            m.position.y = 0.7; m.castShadow=true; g.add(m);
+            const h = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.8, 0.8), new THREE.MeshStandardMaterial({color:0x3e2723}));
+            h.position.set(0, 0.8, 1.2); m.add(h);
+            
+            const ui=document.createElement('div'); ui.className='enemy-hp-bar'; ui.innerHTML='<div class="enemy-hp-fill" style="background:#5d4037"></div>'; document.getElementById('ui-layer').appendChild(ui);
+            const dot=document.createElement('div'); dot.className='mm-dot mm-enemy'; dot.style.background='#5d4037'; document.getElementById('minimap-content').appendChild(dot);
+            enemies.push({group:g, mesh:m, hp:200, max:200, ui:ui, fill:ui.firstChild, mmDot:dot, dead:false, lastAtk:0, speed:0.04, type:"bear"});
+        }
+
+        function createBandit(x,z) {
+            const g=new THREE.Group(); g.position.set(x,0,z); scene.add(g);
+            const m=new THREE.Mesh(new THREE.BoxGeometry(0.65,1.8,0.45), new THREE.MeshStandardMaterial({color:0x800000})); 
+            m.position.y=0.9; m.castShadow=true; g.add(m);
+            const head=new THREE.Mesh(new THREE.BoxGeometry(0.3,0.35,0.3), new THREE.MeshStandardMaterial({color:0xeebb99})); 
+            head.position.set(0,1.05,0); m.add(head); 
+            const ui=document.createElement('div'); ui.className='enemy-hp-bar'; ui.innerHTML='<div class="enemy-hp-fill" style="background:orange"></div>'; document.getElementById('ui-layer').appendChild(ui);
+            const dot=document.createElement('div'); dot.className='mm-dot mm-enemy'; dot.style.background='orange'; document.getElementById('minimap-content').appendChild(dot);
+            enemies.push({group:g, mesh:m, hp:70, max:70, ui:ui, fill:ui.firstChild, mmDot:dot, dead:false, lastAtk:0, speed:0.09, type:"bandit"});
+        }
+
+        function createDrowner(x,z) {
+            const g=new THREE.Group(); g.position.set(x,0,z); scene.add(g);
+            const m=new THREE.Mesh(new THREE.BoxGeometry(0.7,1.7,0.5), new THREE.MeshStandardMaterial({color:0x4682B4})); m.position.y=0.85; m.castShadow=true; m.rotation.x=0.2; g.add(m);
+            const ui=document.createElement('div'); ui.className='enemy-hp-bar'; ui.innerHTML='<div class="enemy-hp-fill" style="background:red"></div>'; document.getElementById('ui-layer').appendChild(ui);
+            const dot=document.createElement('div'); dot.className='mm-dot mm-enemy'; document.getElementById('minimap-content').appendChild(dot);
+            enemies.push({group:g, mesh:m, hp:50, max:50, ui:ui, fill:ui.firstChild, mmDot:dot, dead:false, lastAtk:0, speed:0.06, type:"drowner"});
+        }
+        
+        function spawnHerbs(n) {
+            for(let i=0; i<n; i++) {
+                const x=(Math.random()-0.5)*300; const z=(Math.random()-0.5)*300;
+                const m = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.5, 4), new THREE.MeshStandardMaterial({color:0x9932CC}));
+                m.position.set(x, 0.25, z); m.rotation.y = Math.random()*3;
+                lootDrops.push({mesh:m, item:"Волкобой", amount:1, isHerb:true}); scene.add(m);
+            }
+        }
+
+        function createBloodPool(x, z) {
+            const pool = new THREE.Mesh(new THREE.CircleGeometry(0.6 + Math.random()*0.4, 8), new THREE.MeshBasicMaterial({color:0x550000, transparent:true, opacity:0.8}));
+            pool.rotation.x = -Math.PI/2;
+            pool.position.set(x, 0.03, z); 
+            scene.add(pool);
+            bloodPools.push(pool);
+            if(bloodPools.length > 30) { scene.remove(bloodPools[0]); bloodPools.shift(); }
+        }
+
+        function spawnEnemyPack(n){ for(let i=0;i<n;i++){ const a=Math.random()*6.28; const d=20+Math.random()*25; createDrowner(Math.cos(a)*d, Math.sin(a)*d); } }
+        function spawnBandits(n, x, z) { for(let i=0;i<n;i++) { createBandit(x + (Math.random()-0.5)*15, z + (Math.random()-0.5)*15); } }
+
+        // --- EVENTS ---
+        function setupEvents() {
+            window.addEventListener('resize', () => { camera.aspect = window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
+            document.addEventListener('keydown', (e) => {
+                if(state.isDialog) { const n = parseInt(e.key); const opts = document.getElementById('dialog-options').children; if(n>0 && opts[n-1]) opts[n-1].click(); return; }
+                const k = e.key.toLowerCase();
+                
+                // CRITICAL FIX: UI Toggles must happen BEFORE input blocking
+                if(k==='c' || k==='с') toggleCharMenu();
+                
+                if(k==='i' || k==='ш') { 
+                    if(state.isNoteOpen) { 
+                        closeNote(); 
+                    } else {
+                        const p=document.getElementById('inventory-panel'); 
+                        p.style.display=p.style.display==='none'?'block':'none'; 
+                        if(p.style.display==='block') { document.exitPointerLock(); state.isMenuOpen=true; } 
+                        else { document.body.requestPointerLock(); state.isMenuOpen=false; } 
+                    }
+                }
+
+                if(k === 'escape') {
+                    if(state.isNoteOpen) closeNote();
+                    else if(state.isMenuOpen) {
+                        document.getElementById('inventory-panel').style.display='none';
+                        document.getElementById('char-menu').style.display='none';
+                        document.body.requestPointerLock(); 
+                        state.isMenuOpen=false;
+                    }
+                }
+
+                if(state.isMenuOpen || state.isNoteOpen) return;
+
+                if(['w','ц','arrowup'].includes(k)) keys.w=true; if(['s','ы','arrowdown'].includes(k)) keys.s=true;
+                if(['a','ф','arrowleft'].includes(k)) keys.a=true; if(['d','в','arrowright'].includes(k)) keys.d=true;
+                if(k==='shift') keys.shift=true; if(k===' ') handleDodge();
+                if(k==='q' || k==='й') handleIgni();
+                if(k==='2') handleQuen(); if(k==='3') handleAard(); if(k==='4') handleYrden();
+                if(k==='z' || k==='я') setSword('steel'); 
+                if(k==='x' || k==='ч') setSword('silver');
+                if(k==='e' || k==='у') handleInteraction();
+                if(k==='m' || k==='ь') toggleMeditation();
+                if(k==='1') usePotion();
+                if(k==='r' || k==='к') useGrom();
+            });
+            document.addEventListener('keyup', (e) => { const k = e.key.toLowerCase(); if(['w','ц','arrowup'].includes(k)) keys.w=false; if(['s','ы','arrowdown'].includes(k)) keys.s=false; if(['a','ф','arrowleft'].includes(k)) keys.a=false; if(['d','в','arrowright'].includes(k)) keys.d=false; if(k==='shift') keys.shift=false; });
+            document.addEventListener('mousedown', e => { if(!state.isLocked || state.isDialog || state.isMenuOpen || state.isNoteOpen) return; if(e.button===0) handleAttack(); if(e.button===2) toggleSenses(true); });
+            document.addEventListener('mouseup', e => { if(e.button===2) toggleSenses(false); });
+            document.addEventListener('mousemove', e => { if(!state.isLocked || state.isDialog || state.isMenuOpen || state.isNoteOpen) return; state.camYaw -= e.movementX * 0.002; state.camPitch -= e.movementY * 0.002; state.camPitch = Math.max(0.1, Math.min(1.5, state.camPitch)); });
+            
+            const ov = document.getElementById('overlay');
+            ov.addEventListener('click', () => { if(state.gameOver) location.reload(); else document.body.requestPointerLock(); });
+            document.addEventListener('pointerlockchange', () => { 
+                state.isLocked = document.pointerLockElement === document.body;
+                if(state.gameOver) return;
+                if(state.isLocked) { ov.style.display = 'none'; } 
+                else { if(state.isDialog || state.isMenuOpen || state.isNoteOpen) { ov.style.display = 'none'; } else { ov.style.display = 'flex'; } }
+            });
+        }
+
+        // --- RPG SYSTEM ---
+        function toggleCharMenu() {
+            state.isMenuOpen = !state.isMenuOpen;
+            const menu = document.getElementById('char-menu');
+            if(state.isMenuOpen) { document.exitPointerLock(); menu.style.display = 'block'; updateCharMenu(); } 
+            else { menu.style.display = 'none'; document.body.requestPointerLock(); }
+        }
+
+        function updateCharMenu() {
+            document.getElementById('skill-pts').innerText = state.skillPoints;
+            document.getElementById('atk-val').innerText = Math.round(state.attackMult * 100);
+            document.getElementById('hp-max-val').innerText = state.maxHp;
+            const btns = document.querySelectorAll('.btn-upgrade');
+            btns.forEach(b => { if(state.skillPoints > 0) b.classList.remove('btn-disabled'); else b.classList.add('btn-disabled'); });
+        }
+
+        window.upgradeStat = function(stat) {
+            if(state.skillPoints <= 0) return;
+            state.skillPoints--;
+            if(stat === 'atk') { state.attackMult += 0.1; notify("Сила атаки повышена!"); }
+            if(stat === 'hp') { state.maxHp += 20; state.hp += 20; notify("Здоровье повышено!"); }
+            updateCharMenu();
+        };
+
+        window.closeNote = function() {
+            document.getElementById('note-reader').style.display='none';
+            state.isNoteOpen = false;
+            // Return to inventory view
+            document.getElementById('inventory-panel').style.display='block';
+            state.isMenuOpen = true;
+        }
+
+        window.readNote = function(title) {
+            if(LORE[title]) {
+                document.getElementById('note-title').innerText = title;
+                document.getElementById('note-content').innerText = LORE[title];
+                document.getElementById('note-reader').style.display='block';
+                document.getElementById('inventory-panel').style.display='none'; // hide inv temporarily
+                state.isNoteOpen = true;
+                // Ensure menu state is technically "closed" regarding movement but "open" regarding UI
+                // Actually, logic is: isNoteOpen blocks movement.
+            } else {
+                notify("Невозможно прочитать");
+            }
+        }
+
+        // --- GAMEPLAY MECHANICS ---
+        function setSword(type) {
+            state.currentSword = type;
+            const steelIcon = document.getElementById('sword-steel');
+            const silverIcon = document.getElementById('sword-silver');
+            
+            if(type === 'steel') {
+                steelIcon.classList.add('sword-active');
+                silverIcon.classList.remove('sword-active');
+                swordMesh.material.color.setHex(0x888888); 
+                swordMesh.material.emissive.setHex(0x000000);
+                notify("Стальной меч");
+            } else {
+                silverIcon.classList.add('sword-active');
+                steelIcon.classList.remove('sword-active');
+                swordMesh.material.color.setHex(0xffffff);
+                swordMesh.material.emissive.setHex(0x444444);
+                notify("Серебряный меч");
+            }
+        }
+
+        function toggleSenses(active) {
+            state.sensesActive = active; const ov = document.getElementById('senses-overlay');
+            if(active) { 
+                scene.fog = fogSenses; scene.background = new THREE.Color(0x050505); ov.style.display = 'block'; camera.fov = 50; 
+            } else { 
+                const rainColor = new THREE.Color(0x87CEEB).lerp(new THREE.Color(0x222233), state.rainAlpha);
+                scene.fog = fogNormal;
+                scene.fog.color = rainColor;
+                scene.background = rainColor;
+                ov.style.display = 'none'; camera.fov = 60; 
+            }
+            camera.updateProjectionMatrix();
+            enemies.forEach(e => { if(!e.dead) e.mesh.material.emissive.setHex(active ? 0xff0000 : 0); });
+            lootDrops.forEach(l => { let color = l.isHerb ? 0x00ff00 : (l.isNote ? 0xffffff : 0xffd700); l.mesh.material.emissive.setHex(active ? color : 0x000000); });
+            containers.forEach(c => { if(!c.looted) c.mesh.material.emissive.setHex(active ? 0xffd700 : 0x000000); });
+            placesOfPower.forEach(p => { if(!p.visited) p.mesh.material.emissive.setHex(active ? 0xffaa00 : 0x000000); });
+            nests.forEach(n => { if(!n.destroyed) n.mesh.material.emissive.setHex(active ? 0xff3333 : 0x000000); });
+            tracks.forEach(t => { t.visible = active; }); 
+            [vesemir, merchant, herbalist, roach].forEach(npc => npc.children.forEach(c => { if(c.material) c.material.emissive.setHex(active ? 0x00ff00 : 0x000000); }));
+        }
+
+        function handleQuen() { if(state.hasQuen || state.stamina < 30) return; state.stamina -= 30; state.hasQuen = true; quenShieldMesh.visible = true; document.getElementById('quen-icon').classList.add('skill-active'); showFloatText("КВЕН!", player.position, "#e6b800"); }
+        function handleYrden() { 
+            if(state.stamina < 40) return; 
+            state.stamina -= 40; 
+            state.yrdenActive = true; 
+            state.yrdenTime = 600; 
+            yrdenMesh.position.copy(player.position).setY(0.05); 
+            yrdenMesh.visible = true; 
+            document.getElementById('yrden-icon').classList.add('skill-active');
+            showFloatText("ИРДЕН!", player.position, "#9932CC"); 
+        }
+
+        function takeDamage(amt) {
+            state.adrenaline = 0; // Lost adrenaline on hit
+            if(state.hasQuen) { state.hasQuen = false; quenShieldMesh.visible = false; document.getElementById('quen-icon').classList.remove('skill-active'); showFloatText("Блок!", player.position, "#fff"); return; }
+            state.hp -= amt; if(state.hp <= 0) { state.gameOver = true; document.exitPointerLock(); document.getElementById('overlay').style.display='flex'; document.querySelector('#overlay h1').innerText="ВЫ ПОГИБЛИ"; }
+        }
+
+        function handleAttack() {
+            if(state.stamina<10) return; state.stamina-=10;
+            playerMesh.rotation.y += Math.PI*2; showFloatText("Вжух!", player.position.clone().add(new THREE.Vector3(0,1,0)), "#ccc");
+            const dir=new THREE.Vector3(); player.getWorldDirection(dir);
+            enemies.forEach(e => { if(!e.dead && e.group.position.distanceTo(player.position)<4.5 && dir.dot(e.group.position.clone().sub(player.position).normalize())>0.5) hitEnemy(e, 25 * state.attackMult); });
+        }
+        function handleIgni() {
+            if(state.stamina<40) return; state.stamina-=40; showFloatText("ИГНИ!", player.position, "#ffaa00");
+            const dir=new THREE.Vector3(); player.getWorldDirection(dir);
+            for(let i=0;i<15;i++){ const p=new THREE.Mesh(new THREE.BoxGeometry(0.2,0.2,0.2), new THREE.MeshBasicMaterial({color:0xffaa00})); p.position.copy(player.position).add(new THREE.Vector3(0,1,0)); scene.add(p); particles.push({m:p, v:dir.clone().add(new THREE.Vector3((Math.random()-.5)*0.5,(Math.random()-.5)*0.5,0)).multiplyScalar(0.4), l:25}); }
+            enemies.forEach(e => { if(!e.dead && e.group.position.distanceTo(player.position)<7 && dir.dot(e.group.position.clone().sub(player.position).normalize())>0.5) hitEnemy(e, 30 * state.attackMult); });
+        }
+        function handleAard() {
+            if(state.stamina<30) return; state.stamina-=30; showFloatText("ААРД!", player.position, "#0088ff");
+            const dir=new THREE.Vector3(); player.getWorldDirection(dir);
+            for(let i=0;i<10;i++){ const p=new THREE.Mesh(new THREE.SphereGeometry(0.3,4,4), new THREE.MeshBasicMaterial({color:0x0088ff, transparent:true, opacity:0.6})); p.position.copy(player.position).add(new THREE.Vector3(0,1,0)); scene.add(p); particles.push({m:p, v:dir.clone().add(new THREE.Vector3((Math.random()-.5)*1,(Math.random()-.5)*0.2,0)).multiplyScalar(0.6), l:20}); }
+            enemies.forEach(e => { if(!e.dead && e.group.position.distanceTo(player.position)<8 && dir.dot(e.group.position.clone().sub(player.position).normalize())>0.4) { hitEnemy(e, 10 * state.attackMult); e.group.position.add(dir.clone().multiplyScalar(4.0)); } });
+        }
+
+        function hitEnemy(e, dmg) {
+            state.adrenaline = Math.min(300, state.adrenaline + 15); // Gain Adrenaline
+
+            let isCrit = Math.random() < (0.2 + (state.adrenaline/3000)); // Adrenaline boosts crit chance slightly
+            let adrenMult = 1.0 + (state.adrenaline / 1000); // Max +30% dmg
+            let finalDmg = (isCrit ? dmg * 2 : dmg) * adrenMult;
+            
+            let wrongSword = false;
+            let isMonster = (e.type === "drowner" || e.type === "monster" || e.isBoss);
+            let isHumanoid = (e.type === "bandit" || e.type === "bear");
+            if (state.currentSword === 'steel' && isMonster) { finalDmg *= 0.5; wrongSword = true; }
+            else if (state.currentSword === 'silver' && isHumanoid) { finalDmg *= 0.5; wrongSword = true; }
+            
+            if(state.gromActive) finalDmg *= 1.5;
+
+            if(wrongSword) showFloatText("Не тот меч!", e.group.position.clone().add(new THREE.Vector3(0,3,0)), "#aaa");
+            else if(isCrit) showFloatText("КРИТ!", e.group.position.clone().add(new THREE.Vector3(0,2,0)), "red");
+            else showFloatText(Math.floor(finalDmg), e.group.position.clone().add(new THREE.Vector3(0,2,0)), "white");
+
+            for(let i=0;i<5;i++){
+                 const p=new THREE.Mesh(new THREE.BoxGeometry(0.1,0.1,0.1), new THREE.MeshBasicMaterial({color:0xaa0000}));
+                 p.position.copy(e.group.position).add(new THREE.Vector3(0,1,0)); scene.add(p);
+                 particles.push({m:p, v:new THREE.Vector3((Math.random()-.5)*0.3, Math.random()*0.3, (Math.random()-.5)*0.3), l:15});
+            }
+
+            e.hp -= finalDmg;
+            e.mesh.material.color.setHex(0xff0000); setTimeout(()=>e.mesh.material.color.setHex(e.isBoss?0x8B4513:(e.type==="bandit"?0x800000:(e.type==="bear"?0x3e2723:0x4682B4))), 200);
+            if(e.isBoss) document.getElementById('boss-hp-fill').style.width=(e.hp/e.max*100)+'%'; else e.fill.style.width=(e.hp/e.max*100)+'%';
+            e.group.position.add(e.group.position.clone().sub(player.position).normalize().multiplyScalar(1.2));
+
+            if(e.hp<=0) {
+                // SLOW MO KILL
+                if(isCrit) {
+                    timeScale = 0.2;
+                    setTimeout(() => { timeScale = 1.0; }, 800); 
+                }
+
+                e.dead = true; e.mesh.rotation.x = -Math.PI/2; e.mesh.position.y = 0.2;
+                createBloodPool(e.group.position.x, e.group.position.z);
+                if(e.ui) e.ui.style.display='none'; e.mmDot.style.display='none';
+                if(e.isBoss) { document.getElementById('boss-bar-container').style.display='none'; notify("ЧУДОВИЩЕ ПОВЕРЖЕНО"); }
+                else createLootBag(e.group.position, e.type);
+                
+                let xpGain = e.isBoss ? 500 : (e.type==="bandit"?50:(e.type==="bear"?100:30));
+                state.xp += xpGain; 
+                if(state.xp>=100){ state.level++; state.xp-=100; state.hp=state.maxHp; state.skillPoints++; notify("НОВЫЙ УРОВЕНЬ! Нажми C"); }
+                
+                if(state.quest.id==="drowners" && e.type==="drowner") { state.quest.count++; if(state.quest.count>=5) completeQuestStep(); }
+                if(state.quest.id==="griffin" && e.isBoss) { state.quest.count++; completeQuestStep(); }
+                updateQuestUI();
+            }
+        }
+        function completeQuestStep() { vesemir.getObjectByName("qm").visible=true; notify("Вернитесь к Весемиру"); }
+
+        function showFloatText(txt, pos, color) {
+            const el = document.createElement('div'); el.className='float-text'; el.innerText=txt; el.style.color=color;
+            document.body.appendChild(el);
+            const p = pos.clone(); p.project(camera);
+            el.style.left = ((p.x*.5+.5)*window.innerWidth)+'px'; el.style.top = (-(p.y*.5-.5)*window.innerHeight)+'px';
+            setTimeout(()=>el.remove(), 1000);
+        }
+
+        // --- DIALOGS ---
+        function handleInteraction() {
+            let found=false;
+            lootDrops.forEach((l,i)=>{
+                if(player.position.distanceTo(l.mesh.position)<CONFIG.interactDist){
+                    scene.remove(l.mesh); lootDrops.splice(i,1);
+                    if(l.item==="Золото") state.gold += l.amount; else inventory[l.item]=(inventory[l.item]||0)+1; 
+                    updateInv(); notify(`Подобрано: ${l.item} ${l.amount?('('+l.amount+')'):''}`); found=true;
+                }
+            });
+
+            if(!found) {
+                containers.forEach((c, i) => {
+                    if(!c.looted && player.position.distanceTo(c.mesh.position) < CONFIG.interactDist) {
+                        if(c.locked && !inventory["Ключ Бандита"]) {
+                            notify("Нужен ключ!", true); found = true; return;
+                        }
+
+                        c.looted = true; scene.remove(c.mesh); 
+                        if(c.locked) notify("Сундук открыт!");
+                        
+                        const r = Math.random(); let item="Руда", amt=1;
+                        if(c.locked) { item="Ключ от всех дверей"; amt=1; } // Just flavor
+                        else {
+                            if(r<0.4) { item="Золото"; amt=Math.floor(Math.random()*15)+5; } else if(r<0.7) item="Ткань";
+                        }
+                        
+                        const b=new THREE.Mesh(new THREE.DodecahedronGeometry(0.3), new THREE.MeshStandardMaterial({color:0xffcc00})); 
+                        b.position.copy(c.mesh.position).setY(0.3);
+                        lootDrops.push({mesh:b, item:item, amount:amt}); scene.add(b);
+                        notify("Обыскано"); found = true;
+                    }
+                });
+            }
+
+            if(!found) {
+                placesOfPower.forEach(p => {
+                    if(!p.visited && player.position.distanceTo(p.group.position) < CONFIG.interactDist) {
+                        p.visited = true; state.skillPoints++; p.mesh.material.emissive.setHex(0x222222); p.mmDot.style.background = "#555";
+                        notify("МЕСТО СИЛЫ: +1 Очко Навыков!"); updateCharMenu(); found = true;
+                    }
+                });
+            }
+            
+            if(!found) {
+                nests.forEach(n => {
+                    if(!n.destroyed && player.position.distanceTo(n.group.position) < CONFIG.interactDist) {
+                        n.destroyed = true; 
+                        scene.remove(n.mesh); n.mmDot.style.background = "#555";
+                        
+                        // Explosion particles
+                        for(let i=0; i<20; i++){
+                             const p=new THREE.Mesh(new THREE.BoxGeometry(0.3,0.3,0.3), new THREE.MeshBasicMaterial({color:0xff5500}));
+                             p.position.copy(n.group.position).add(new THREE.Vector3(0,1,0)); scene.add(p);
+                             particles.push({m:p, v:new THREE.Vector3((Math.random()-.5), Math.random(), (Math.random()-.5)), l:40});
+                        }
+                        
+                        state.xp += 150; notify("Гнездо уничтожено! (+150 XP)");
+                        if(state.xp>=100){ state.level++; state.xp-=100; state.hp=state.maxHp; state.skillPoints++; notify("НОВЫЙ УРОВЕНЬ! Нажми C"); }
+                        
+                        const b=new THREE.Mesh(new THREE.DodecahedronGeometry(0.4), new THREE.MeshStandardMaterial({color:0x800080})); 
+                        b.position.copy(n.group.position).setY(0.3);
+                        lootDrops.push({mesh:b, item:"Мутаген", amount:1}); scene.add(b);
+                        
+                        found = true;
+                    }
+                });
+            }
+            
+            // Roach Stash
+            if(!found && player.position.distanceTo(roach.position)<4.5) {
+                // Simplified stash: just remove heavy items (dummy logic)
+                if(inventory["Руда"] > 0) {
+                    const amt = inventory["Руда"];
+                    stash["Руда"] = (stash["Руда"]||0) + amt;
+                    inventory["Руда"] = 0;
+                    notify(`Скинуто: Руда (${amt})`);
+                    updateInv();
+                } else {
+                    notify("Плотва: Нет тяжелых предметов");
+                }
+                found = true;
+            }
+
+            if(!found && player.position.distanceTo(vesemir.position)<4.5) { currentNPC = vesemir; startDialog(); }
+            else if(!found && player.position.distanceTo(merchant.position)<4.5) { currentNPC = merchant; startDialog(); }
+            else if(!found && player.position.distanceTo(herbalist.position)<4.5) { currentNPC = herbalist; startDialog(); }
+        }
+
+        function startDialog(){ 
+            state.isDialog=true; document.exitPointerLock(); document.getElementById('dialog-box').style.display='block'; 
+            const npcType = currentNPC.userData.npcType;
+            if(npcType==="vesemir") document.getElementById('npc-name').innerText="Весемир";
+            else if(npcType==="merchant") document.getElementById('npc-name').innerText="Торговец";
+            else if(npcType==="herbalist") document.getElementById('npc-name').innerText="Травница";
+            
+            let node;
+            if(npcType==="vesemir") {
+                let s="start"; const q=state.quest; 
+                if(q.id==="drowners") s=q.count>=q.target?"drowners_done":"drowners_active"; 
+                if(q.id==="griffin") s=q.count>=q.target?"griffin_done":"griffin_active"; 
+                if(q.id==="done") s="all_done"; 
+                node = DIALOGS.vesemir[s];
+            } else if(npcType==="merchant") node = DIALOGS.merchant.main;
+            else if(npcType==="herbalist") node = DIALOGS.herbalist.main;
+            
+            showDialogNode(node); 
+        }
+
+        function showDialogNode(n){ 
+            document.getElementById('npc-text').innerText = n.text; 
+            const div = document.getElementById('dialog-options'); div.innerHTML=''; 
+            n.options.forEach((opt,i)=>{ 
+                const d=document.createElement('div'); d.className='dialog-option'; d.innerText=`[${i+1}] ${opt.text}`; 
+                d.onclick=()=>{ 
+                    if(opt.action==="close") { state.isDialog=false; document.getElementById('dialog-box').style.display='none'; document.body.requestPointerLock(); currentNPC=null; } 
+                    if(opt.action==="quest_drowners") setQuest("drowners", 5); 
+                    if(opt.action==="quest_griffin") { setQuest("griffin", 1); createGriffin(0, -90); } 
+                    if(opt.action==="info_merchant") showDialogNode(DIALOGS.vesemir.info_merchant);
+                    if(opt.action==="back_start") startDialog(); 
+                    if(opt.action==="buy_potion") { if(state.gold >= 50) { state.gold -= 50; state.potions++; notify("Куплена Ласточка (-50)"); updateInv(); } else notify("Не хватает золота!", true); } 
+                    if(opt.action==="buy_grom") { if(state.gold >= 70) { state.gold -= 70; state.grom++; notify("Куплен Гром (-70)"); updateInv(); } else notify("Не хватает золота!", true); } 
+                    if(opt.action==="brew_potion") { if(inventory["Волкобой"] >= 3) { inventory["Волкобой"] -= 3; state.potions++; notify("Ласточка сварена!"); updateInv(); } else notify("Нужно 3 Волкобоя", true); }
+                    if(opt.action==="brew_grom") { if(inventory["Волкобой"] >= 2 && state.gold>=10) { inventory["Волкобой"] -= 2; state.gold-=10; state.grom++; notify("Гром сварен!"); updateInv(); } else notify("Нужно 2 Волкобоя и 10 золота", true); }
+                }; div.appendChild(d); 
+            }); 
+        }
+
+        function setQuest(id, t) { state.quest={id:id, count:0, target:t}; vesemir.getObjectByName("qm").visible=false; state.isDialog=false; document.getElementById('dialog-box').style.display='none'; document.body.requestPointerLock(); currentNPC=null; updateQuestUI(); notify("Задание обновлено"); }
+        function updateQuestUI() { const el=document.getElementById('quest-tracker'); if(state.quest.id==="none"||state.quest.id==="done") el.style.display='none'; else { el.style.display='block'; document.getElementById('quest-title').innerText = state.quest.id==="drowners"?"Заказ: Утопцы":"Заказ: Грифон"; document.getElementById('quest-obj').innerText=`${state.quest.count}/${state.quest.target}`; } }
+        function createLootBag(p, type){ 
+            const b=new THREE.Mesh(new THREE.DodecahedronGeometry(0.3), new THREE.MeshStandardMaterial({color:0xffcc00})); b.position.copy(p).setY(0.3); 
+            let item="Трофей", amt=0; 
+            if(type==="bandit") { 
+                const r = Math.random();
+                if(r<0.3) { item="Ключ Бандита"; amt=1; }
+                else { item="Золото"; amt=Math.floor(Math.random()*20)+10; }
+            } 
+            if(type==="bear") { item="Шкура"; amt=1; } 
+            lootDrops.push({mesh:b, item:item, amount:amt}); scene.add(b); 
+        }
+        function updateInv(){ 
+            const l=document.getElementById('inventory-list'); l.innerHTML=''; 
+            document.getElementById('gold-val').innerText = state.gold; 
+            for(let k in inventory) {
+                if(inventory[k] > 0) {
+                    const li = document.createElement('li');
+                    li.innerText = `${k} x${inventory[k]}`;
+                    if(LORE[k]) { li.innerText += " (Читать)"; li.onclick = () => readNote(k); }
+                    l.appendChild(li);
+                }
+            }
+        }
+        function notify(m,imp){ const d=document.createElement('div'); d.className='loot-msg'; d.innerText=m; if(imp)d.style.borderColor='red'; document.getElementById('notifications').appendChild(d); setTimeout(()=>d.remove(),3000); }
+        function usePotion(){ if(state.potions>0 && state.hp<state.maxHp){state.potions--; state.hp=Math.min(state.maxHp,state.hp+40); notify("Ласточка выпита");} }
+        function useGrom(){ if(state.grom>0){state.grom--; state.gromActive=true; state.gromTime=900; notify("Гром выпит! Урон +50%"); document.getElementById('thunder-overlay').style.display='block';} }
+        function handleDodge(){ if(state.stamina>20){state.stamina-=20; const d=new THREE.Vector3(); camera.getWorldDirection(d); d.y=0; player.position.add(d.normalize().multiplyScalar(4));}}
+        function toggleMeditation(){ state.isMeditating=!state.isMeditating; playerMesh.position.y=state.isMeditating?0.5:0.9; notify(state.isMeditating?"Медитация...":"Готов к бою"); }
+
+        // --- ANIMATION ---
+        function animate() {
+            requestAnimationFrame(animate);
+            if(state.isLocked && !state.gameOver && !state.isDialog && !state.isMenuOpen && !state.isNoteOpen) {
+                // Weather
+                state.weatherTimer += 1 * timeScale;
+                if(state.weatherTimer > 1000) {
+                    if(Math.random() < 0.005) {
+                        state.rainTarget = !state.rainTarget;
+                        if(state.rainTarget) notify("Ветер усиливается...", true);
+                        else notify("Дождь стихает.");
+                        state.weatherTimer = 0;
+                    }
+                }
+                
+                if (state.rainTarget && state.rainAlpha < 1.0) state.rainAlpha += 0.002 * timeScale;
+                if (!state.rainTarget && state.rainAlpha > 0.0) state.rainAlpha -= 0.002 * timeScale;
+                state.rainAlpha = Math.max(0, Math.min(1, state.rainAlpha));
+
+                rainSystem.visible = state.rainAlpha > 0.01;
+                rainSystem.material.opacity = state.rainAlpha * 0.6;
+                
+                if(!state.sensesActive) {
+                    const sunColor = new THREE.Color(0x87CEEB);
+                    const stormColor = new THREE.Color(0x222233);
+                    const finalColor = sunColor.clone().lerp(stormColor, state.rainAlpha);
+                    scene.background = finalColor;
+                    scene.fog.color = finalColor;
+                    scene.fog.near = 20 - (10 * state.rainAlpha); 
+                    scene.fog.far = 90 - (40 * state.rainAlpha); 
+                }
+
+                if(rainSystem.visible) {
+                    const positions = rainGeo.attributes.position.array;
+                    for(let i=1; i<positions.length; i+=3) {
+                        positions[i] -= 0.8 * timeScale; if(positions[i] < 0) positions[i] = 60;
+                    }
+                    rainGeo.attributes.position.needsUpdate = true;
+                    rainSystem.position.x = player.position.x; rainSystem.position.z = player.position.z;
+                }
+
+                if(state.yrdenActive) {
+                    state.yrdenTime -= 1 * timeScale;
+                    if(state.yrdenTime <= 0) { state.yrdenActive=false; yrdenMesh.visible=false; document.getElementById('yrden-icon').classList.remove('skill-active'); }
+                }
+                if(state.gromActive) {
+                    state.gromTime -= 1 * timeScale;
+                    if(state.gromTime <= 0) { state.gromActive=false; notify("Действие Грома закончилось"); document.getElementById('thunder-overlay').style.display='none'; }
+                }
+
+                state.timeOfDay += (state.isMeditating ? 0.05 : 0.0004) * timeScale;
+                sunLight.position.set(Math.sin(state.timeOfDay)*100, Math.cos(state.timeOfDay)*100, Math.cos(state.timeOfDay*0.5)*50);
+                
+                if(!state.isMeditating && state.stamina<100) state.stamina+=0.3 * timeScale;
+                else if(state.isMeditating) { state.hp=Math.min(state.maxHp,state.hp+0.2); state.stamina=Math.min(100,state.stamina+1); }
+                document.getElementById('hp-bar').style.width=(state.hp/state.maxHp*100)+'%'; 
+                document.getElementById('stamina-bar').style.width=state.stamina+'%';
+                document.getElementById('xp-val').innerText=state.xp; document.getElementById('lvl-val').innerText=state.level; 
+                document.getElementById('potions-val').innerText=state.potions; document.getElementById('grom-val').innerText=state.grom;
+
+                // Update Adrenaline UI & Visuals
+                document.getElementById('adren-1').style.width = Math.min(100, state.adrenaline) + '%';
+                document.getElementById('adren-2').style.width = Math.min(100, Math.max(0, state.adrenaline-100)) + '%';
+                document.getElementById('adren-3').style.width = Math.min(100, Math.max(0, state.adrenaline-200)) + '%';
+                
+                // Red Glow on Max Adrenaline
+                if(state.adrenaline >= 300) { swordMesh.material.emissive.setHex(0xff0000); } 
+                else if(!state.sensesActive && state.currentSword==='steel') { swordMesh.material.emissive.setHex(0x000000); }
+                else if(!state.sensesActive && state.currentSword==='silver') { swordMesh.material.emissive.setHex(0x444444); }
+
+                if(!state.isMeditating) {
+                    let spd = (keys.shift ? CONFIG.runSpeed : CONFIG.baseSpeed) * timeScale;
+                    if(!(keys.w||keys.s||keys.a||keys.d)) spd=0;
+                    if(spd>0) {
+                        const d=new THREE.Vector3(); camera.getWorldDirection(d); d.y=0; d.normalize(); const r=new THREE.Vector3().crossVectors(d,new THREE.Vector3(0,1,0));
+                        const m=new THREE.Vector3(); if(keys.w)m.add(d); if(keys.s)m.sub(d); if(keys.a)m.sub(r); if(keys.d)m.add(r);
+                        if(m.lengthSq()>0){ m.normalize(); player.position.add(m.multiplyScalar(spd)); player.rotation.y=Math.atan2(m.x,m.z); playerMesh.position.y=0.9+Math.sin(Date.now()*0.015)*0.03; }
+                    }
+                }
+
+                const t = player.position.clone().add(new THREE.Vector3(0, 1.6, 0));
+                const dist = state.sensesActive ? 3.5 : 5.5;
+                const camPos = new THREE.Vector3(t.x + dist * Math.cos(state.camYaw) * Math.cos(state.camPitch), t.y + dist * Math.sin(state.camPitch), t.z + dist * Math.sin(state.camYaw) * Math.cos(state.camPitch));
+                camera.position.lerp(camPos, 0.15 * timeScale); camera.lookAt(t);
+
+                for(let i=particles.length-1;i>=0;i--){ let p=particles[i]; p.m.position.add(p.v.clone().multiplyScalar(timeScale)); p.l -= 1 * timeScale; if(p.l<=0){scene.remove(p.m); particles.splice(i,1);} }
+
+                enemies.forEach(e => {
+                    if(e.dead) return;
+                    const d = player.position.distanceTo(e.group.position);
+                    let currentSpeed = e.speed * timeScale;
+                    if(state.yrdenActive && e.group.position.distanceTo(yrdenMesh.position) < 3.0) currentSpeed *= 0.4;
+
+                    if(d < 40 && !state.isMeditating) {
+                        e.group.lookAt(player.position);
+                        if(d > (e.isBoss?3:(e.type==="bear"?2.5:1.5))) e.group.translateZ(e.isBoss ? currentSpeed*1.2 : currentSpeed);
+                        else if(Date.now()-e.lastAtk > (e.type==="bear"?2500:1500)) {
+                            takeDamage(e.isBoss ? 40 : (e.type==="bandit"?15:(e.type==="bear"?35:10))); e.lastAtk = Date.now();
+                            e.mesh.translateZ(0.5); setTimeout(()=>e.mesh.translateZ(-0.5), 200);
+                        }
+                    }
+                    const mmX = (e.group.position.x - player.position.x)*1.5 + 80; const mmY = (e.group.position.z - player.position.z)*1.5 + 80;
+                    if(mmX>0&&mmX<160&&mmY>0&&mmY<160){e.mmDot.style.display='block';e.mmDot.style.left=mmX+'px';e.mmDot.style.top=mmY+'px';}else e.mmDot.style.display='none';
+                    if(!e.isBoss) {
+                        const p=e.group.position.clone().add(new THREE.Vector3(0,2.5,0)); p.project(camera);
+                        if(p.z<1 && d<20){e.ui.style.display='block';e.ui.style.left=((p.x*.5+.5)*window.innerWidth-25)+'px';e.ui.style.top=(-(p.y*.5-.5)*window.innerHeight)+'px';}else e.ui.style.display='none';
+                    }
+                });
+                
+                // Update MM for Power/Nests
+                [...placesOfPower, ...nests].forEach(obj => {
+                    const mmX = (obj.group.position.x - player.position.x)*1.5 + 80; const mmY = (obj.group.position.z - player.position.z)*1.5 + 80;
+                    if(mmX>0&&mmX<160&&mmY>0&&mmY<160){obj.mmDot.style.display='block';obj.mmDot.style.left=mmX+'px';obj.mmDot.style.top=mmY+'px';}else obj.mmDot.style.display='none';
+                });
+                [vesemir, merchant, herbalist, roach].forEach(npc => {
+                    const mmX = (npc.position.x - player.position.x)*1.5 + 80; const mmY = (npc.position.z - player.position.z)*1.5 + 80;
+                    if(mmX>0&&mmX<160&&mmY>0&&mmY<160){npc.userData.mmDot.style.display='block';npc.userData.mmDot.style.left=mmX+'px';npc.userData.mmDot.style.top=mmY+'px';}else npc.userData.mmDot.style.display='none';
+                });
+
+                const hint = document.getElementById('interact-hint');
+                let near = false;
+                lootDrops.forEach(l=>{if(player.position.distanceTo(l.mesh.position)<CONFIG.interactDist)near=true;});
+                containers.forEach(c=>{if(!c.looted && player.position.distanceTo(c.mesh.position)<CONFIG.interactDist)near=true;});
+                placesOfPower.forEach(p=>{if(!p.visited && player.position.distanceTo(p.group.position)<CONFIG.interactDist)near=true;});
+                nests.forEach(n=>{if(!n.destroyed && player.position.distanceTo(n.group.position)<CONFIG.interactDist)near=true;});
+                if(player.position.distanceTo(roach.position)<4.5)near=true;
+                
+                if(player.position.distanceTo(vesemir.position)<4.5)near=true;
+                if(player.position.distanceTo(merchant.position)<4.5)near=true;
+                if(player.position.distanceTo(herbalist.position)<4.5)near=true;
+                hint.style.display = near ? 'block' : 'none';
+            }
+            renderer.render(scene, camera);
+        }
+    </script>
+</body>
+</html>
